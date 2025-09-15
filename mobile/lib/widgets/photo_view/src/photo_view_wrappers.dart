@@ -1,9 +1,13 @@
 import 'package:flutter/widgets.dart';
+import 'dart:io';
 
 import '../photo_view.dart';
 import 'core/photo_view_core.dart';
 import 'photo_view_default_widgets.dart';
 import 'utils/photo_view_utils.dart';
+import 'hdr_viewer.dart';
+import 'package:immich_mobile/presentation/widgets/images/remote_image_provider.dart';
+import 'package:immich_mobile/presentation/widgets/images/local_image_provider.dart';
 
 class ImageWrapper extends StatefulWidget {
   const ImageWrapper({
@@ -204,6 +208,12 @@ class _ImageWrapperState extends State<ImageWrapper> {
       );
     }
 
+    // Check if we should use HDR viewer
+
+    if (Platform.isAndroid) {
+      return _buildHdrViewer(context);
+    }
+
     final scaleBoundaries = ScaleBoundaries(
       widget.minScale ?? 0.0,
       widget.maxScale ?? double.infinity,
@@ -253,6 +263,33 @@ class _ImageWrapperState extends State<ImageWrapper> {
       return widget.errorBuilder!(context, _lastException!, _lastStack);
     }
     return PhotoViewDefaultError(decoration: widget.backgroundDecoration);
+  }
+
+  Widget _buildHdrViewer(BuildContext context) {
+    // Extract asset ID from the image provider
+    String? assetId;
+    if (widget.imageProvider is RemoteFullImageProvider) {
+      assetId = (widget.imageProvider as RemoteFullImageProvider).assetId;
+    } else if (widget.imageProvider is LocalFullImageProvider) {
+      assetId = (widget.imageProvider as LocalFullImageProvider).id;
+    }
+
+    return Container(
+      decoration: widget.backgroundDecoration,
+      child: HdrViewer(
+        imagePath: null, // We'll use assetId instead
+        assetId: assetId,
+        scaleType: HdrScaleType.centerCrop,
+        enableHdr: true,
+        onImageLoaded: () {
+          // Image loaded successfully
+        },
+        onError: (error) {
+          // Fall back to regular image display on HDR error
+          debugPrint('HDR viewer error: $error');
+        },
+      ),
+    );
   }
 }
 
